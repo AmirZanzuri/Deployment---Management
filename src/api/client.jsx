@@ -9,13 +9,11 @@ export const api = axios.create({
   baseURL,
   headers: {
     'Content-Type': 'application/json',
-    // Add CORS headers
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   },
-  // Increase timeout to 30 seconds for slower connections
-  timeout: 30000,
-  withCredentials: false, // Disable credentials for CORS requests
+  // Add timeout configuration
+  timeout: 10000, // 10 seconds
+  // Enable CORS
+  withCredentials: false
 });
 
 // Add a request interceptor for authentication if needed
@@ -25,10 +23,11 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Add CORS headers
+    config.headers['Access-Control-Allow-Origin'] = '*';
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -42,23 +41,15 @@ api.interceptors.response.use(
     // Handle common errors here
     if (error.response) {
       // Server responded with a status code outside the 2xx range
-      console.error('API Error Response:', {
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers
-      });
-      
       if (error.response.status === 401) {
         // Unauthorized - clear local storage and redirect to login
         localStorage.removeItem('authToken');
         // window.location.href = '/login';
       }
-    } else if (error.request) {
-      // Request was made but no response received
-      console.error('No response received:', error.request);
-    } else {
-      // Error in request configuration
-      console.error('Error in request setup:', error.message);
+    } else if (error.code === 'ECONNABORTED') {
+      console.error('Request timeout - the server took too long to respond');
+    } else if (error.message === 'Network Error') {
+      console.error('Network error - please check your connection and ensure the API server is running');
     }
     return Promise.reject(error);
   }
