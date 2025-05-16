@@ -9,10 +9,13 @@ export const api = axios.create({
   baseURL,
   headers: {
     'Content-Type': 'application/json',
+    // Add CORS headers
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   },
-  // Add timeout and additional configurations
-  timeout: 10000,
-  withCredentials: true, // Enable sending cookies in cross-origin requests if needed
+  // Increase timeout to 30 seconds for slower connections
+  timeout: 30000,
+  withCredentials: false, // Disable credentials for CORS requests
 });
 
 // Add a request interceptor for authentication if needed
