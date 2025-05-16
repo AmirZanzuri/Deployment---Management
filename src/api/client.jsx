@@ -2,29 +2,23 @@
 import axios from 'axios';
 
 // Get the base URL from environment variables, or use a default
-// Using Vite's approach for environment variables
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
-export const api = axios.create({
+const api = axios.create({
   baseURL,
+  timeout: 15000, // 15 seconds
   headers: {
     'Content-Type': 'application/json',
-  },
-  // Add timeout configuration
-  timeout: 10000, // 10 seconds
-  // Enable CORS
-  withCredentials: false
+  }
 });
 
-// Add a request interceptor for authentication if needed
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Add CORS headers
-    config.headers['Access-Control-Allow-Origin'] = '*';
     return config;
   },
   (error) => {
@@ -32,25 +26,26 @@ api.interceptors.request.use(
   }
 );
 
-// Add a response interceptor for error handling
+// Response interceptor
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    // Handle common errors here
-    if (error.response) {
-      // Server responded with a status code outside the 2xx range
-      if (error.response.status === 401) {
-        // Unauthorized - clear local storage and redirect to login
-        localStorage.removeItem('authToken');
-        // window.location.href = '/login';
-      }
-    } else if (error.code === 'ECONNABORTED') {
-      console.error('Request timeout - the server took too long to respond');
-    } else if (error.message === 'Network Error') {
-      console.error('Network error - please check your connection and ensure the API server is running');
+  (response) => response,
+  async (error) => {
+    if (!error.response) {
+      // Network or connection error
+      console.error('API Connection Error:', {
+        message: error.message,
+        code: error.code,
+        baseURL: api.defaults.baseURL
+      });
+      return Promise.reject(new Error('Unable to connect to the API. Please check your connection and try again.'));
     }
+
+    if (error.response.status === 401) {
+      localStorage.removeItem('authToken');
+    }
+
     return Promise.reject(error);
   }
 );
+
+export { api };

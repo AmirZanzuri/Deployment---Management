@@ -1,26 +1,35 @@
 // src/entities/ComponentVersion.jsx
 import { api } from '../api/client';
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export class ComponentVersion {
   static async list(sort = '-created_at') {
-    try {
-      const response = await api.get('/component-versions', { 
-        params: { sort },
-        // Add retry logic for network issues
-        retry: 3,
-        retryDelay: 1000
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching component versions:', error);
-      if (error.message === 'Network Error') {
-        console.error('Please check that the API server is running and accessible');
+    let retries = 0;
+    
+    while (retries < MAX_RETRIES) {
+      try {
+        const response = await api.get('/component-versions', { 
+          params: { sort }
+        });
+        return response.data || [];
+      } catch (error) {
+        retries++;
+        console.error(`Attempt ${retries} failed:`, error.message);
+        
+        if (retries === MAX_RETRIES) {
+          console.error('Max retries reached. Returning empty array.');
+          return [];
+        }
+        
+        await sleep(RETRY_DELAY * retries);
       }
-      if (error.code === 'ECONNABORTED') {
-        console.error('The request timed out - please try again');
-      }
-      return [];
     }
+    
+    return [];
   }
 
   static async get(id) {
